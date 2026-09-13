@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { GanpatiImage } from '@/components/GanpatiImage';
 import {
   ArrowLeft,
@@ -15,12 +16,14 @@ import {
   Compass,
   Car,
   Footprints,
+  ChevronRight,
 } from 'lucide-react';
 import { Ganpati } from '@/types/ganpati';
 import { useDarshan } from '@/context/DarshanContext';
 import { calculateDistanceMeters, formatMarathiDistance, formatMarathiTravelTime } from '@/lib/distance';
 import { toMarathiNumber, toMarathiOrdinal } from '@/lib/marathiNumbers';
 import { getDirectionsUrl } from '@/lib/maps';
+import { getDekhavaByGanpatiSlug } from '@/data/dekhave';
 
 interface Props {
   ganpati: Ganpati;
@@ -40,6 +43,7 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
     isLoadingLocation,
   } = useDarshan();
   const isVisited = visitedIds.has(ganpati.id);
+  const dekhava = getDekhavaByGanpatiSlug(ganpati.slug);
 
   // Distance from active userLocation (real GPS or preset start)
   const distance = userLocation
@@ -152,6 +156,16 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
                 <Calendar size={12} />
                 <span>स्थापना: {toMarathiNumber(ganpati.establishedYear)}</span>
               </span>
+            )}
+
+            {dekhava && (
+              <a
+                href="#dekhava"
+                className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300/80 px-2.5 py-1 rounded-full transition-colors"
+              >
+                <span>✨ देखावा: {dekhava.title}</span>
+                <span>↓</span>
+              </a>
             )}
           </div>
 
@@ -357,6 +371,89 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
           </ul>
         </div>
       )}
+
+      {/* Dekhava Section (✨ यंदाचा देखावा) */}
+      <div id="dekhava" className="bg-white rounded-2xl border border-border p-5 shadow-soft space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span className="text-amber-600">✨</span>
+            <span>यंदाचा देखावा</span>
+          </h2>
+          <Link
+            href="/dekhave"
+            className="text-xs font-semibold text-saffron-700 hover:text-saffron-800 flex items-center gap-0.5 hover:underline"
+          >
+            <span>सर्व देखावे</span>
+            <ChevronRight size={13} />
+          </Link>
+        </div>
+
+        {dekhava && dekhava.imageSrc ? (
+          <div className="space-y-3">
+            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 border border-orange-100/80 shadow-xs">
+              <Image
+                src={dekhava.imageSrc}
+                alt={dekhava.altText || `${ganpati.name}चा ${dekhava.title} देखावा`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 100vw, 448px"
+                loading="lazy"
+              />
+            </div>
+
+            <div className="space-y-1 pt-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <h3 className="text-lg font-bold text-slate-900">
+                  {dekhava.title}
+                </h3>
+                <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shrink-0">
+                  {toMarathiNumber(dekhava.year)}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-saffron-800">
+                {dekhava.ganpatiName || ganpati.name}
+              </p>
+              {dekhava.location && (
+                <p className="text-xs text-slate-500 flex items-center gap-1">
+                  <MapPin size={12} className="text-slate-400" />
+                  <span>{dekhava.location}</span>
+                </p>
+              )}
+              {dekhava.description && (
+                <p className="text-xs text-slate-600 pt-1 leading-relaxed">
+                  {dekhava.description}
+                </p>
+              )}
+            </div>
+
+            {dekhava.sourceUrl && (
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                <a
+                  href={dekhava.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-slate-500 hover:text-saffron-700 transition-colors"
+                >
+                  <span>📷</span>
+                  <span className="underline">फोटो स्रोत</span>
+                </a>
+                <span className="text-[11px] text-slate-400">
+                  {dekhava.sourceLabel || 'माहिती स्रोत'}
+                </span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-amber-50/60 rounded-xl p-4 border border-amber-200/70 text-center space-y-1">
+            <p className="text-sm font-bold text-amber-950">
+              {dekhava ? dekhava.title : 'यंदाचा विशेष देखावा'}
+            </p>
+            <p className="text-xs text-amber-800">
+              फोटो लवकरच उपलब्ध होईल.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Address & Location (ठिकाण) */}
       <div className="bg-white rounded-2xl border border-border p-5 shadow-soft space-y-2.5">

@@ -62,6 +62,19 @@ export default function HomePage() {
             <Scroll className="w-4 h-4 text-slate-500" />
             <span>🗺️ सर्व गणपती पहा (९ गणपती)</span>
           </Link>
+
+          <Link
+            href="/dekhave"
+            className="w-full py-2.5 px-3.5 bg-gradient-to-r from-amber-50 to-orange-50 hover:from-amber-100/90 hover:to-orange-100/90 active:scale-[0.98] text-slate-800 font-bold rounded-xl border border-amber-200/80 flex items-center justify-between gap-2 text-xs transition-all shadow-2xs group"
+          >
+            <span className="flex items-center gap-2">
+              <span className="text-base">✨</span>
+              <span>गणपतीचे देखावे — यंदाचे खास देखावे</span>
+            </span>
+            <span className="text-saffron-700 font-bold group-hover:translate-x-0.5 transition-transform">
+              पहा →
+            </span>
+          </Link>
         </div>
 
         {/* Value badge */}

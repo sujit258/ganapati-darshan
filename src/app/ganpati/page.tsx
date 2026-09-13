@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Scroll, Sparkles, Filter } from 'lucide-react';
+import Link from 'next/link';
+import { Scroll, Sparkles, Filter, ChevronRight } from 'lucide-react';
 import { GANPATIS } from '@/data/ganpatis';
 import { GanpatiCard } from '@/components/GanpatiCard';
 import { GanpatiCategory } from '@/types/ganpati';
@@ -29,6 +30,30 @@ export default function AllGanpatisPage() {
           ५ मानाचे गणपती आणि ४ प्रमुख ऐतिहासिक गणपतींची सविस्तर माहिती
         </p>
       </div>
+
+      {/* Dekhave Showcase CTA Banner */}
+      <Link
+        href="/dekhave"
+        className="block bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-300/80 hover:border-amber-400 rounded-2xl p-3.5 shadow-xs hover:shadow-soft transition-all group"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">✨</span>
+            <div>
+              <div className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-saffron-700 transition-colors">
+                गणपतीचे देखावे
+              </div>
+              <div className="text-[11px] text-slate-600 font-medium">
+                यंदाचे सुंदर देखावे पहा →
+              </div>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-saffron-700 bg-white px-2.5 py-1 rounded-lg border border-amber-200 group-hover:translate-x-0.5 transition-all shadow-xs">
+            <span>पहा</span>
+            <span>→</span>
+          </span>
+        </div>
+      </Link>
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 rounded-xl">

@@ -83,3 +83,21 @@ export interface UserLocation {
 }
 
 export type LocationPermissionStatus = 'prompt' | 'granted' | 'denied' | 'unavailable';
+
+export type DekhavaCategory = 'manache' | 'pramukh' | 'itar';
+
+export interface Dekhava {
+  id: string;
+  ganpatiSlug?: string;
+  ganpatiName: string;
+  title: string;
+  description?: string;
+  imageSrc?: string;
+  altText?: string;
+  year: number;
+  location?: string;
+  sourceUrl?: string;
+  sourceLabel?: string;
+  category?: DekhavaCategory;
+  verified?: boolean;
+}

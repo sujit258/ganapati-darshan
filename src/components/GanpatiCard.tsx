@@ -3,11 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { GanpatiImage } from '@/components/GanpatiImage';
-import { Navigation, Check, ChevronRight } from 'lucide-react';
+import { Navigation, Check, ChevronRight, Sparkles } from 'lucide-react';
 import { Ganpati } from '@/types/ganpati';
 import { calculateDistanceMeters, formatMarathiDistance } from '@/lib/distance';
 import { getDirectionsUrl } from '@/lib/maps';
 import { useDarshan } from '@/context/DarshanContext';
+import { getDekhavaByGanpatiSlug } from '@/data/dekhave';
 
 interface Props {
   ganpati: Ganpati;
@@ -16,6 +17,7 @@ interface Props {
 export const GanpatiCard: React.FC<Props> = ({ ganpati }) => {
   const { userLocation, isRealLocation, visitedIds, travelMode } = useDarshan();
   const isVisited = visitedIds.has(ganpati.id);
+  const dekhava = getDekhavaByGanpatiSlug(ganpati.slug);
 
   const distance = userLocation
     ? calculateDistanceMeters(
@@ -104,11 +106,22 @@ export const GanpatiCard: React.FC<Props> = ({ ganpati }) => {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="w-full py-2 px-3 rounded-xl bg-saffron-50 hover:bg-saffron-100 active:bg-saffron-200 text-saffron-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+          className="flex-1 py-2 px-3 rounded-xl bg-saffron-50 hover:bg-saffron-100 active:bg-saffron-200 text-saffron-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
         >
           <Navigation size={13} />
           <span>दिशा मिळवा</span>
         </a>
+
+        {dekhava && (
+          <Link
+            href={`/ganpati/${ganpati.slug}#dekhava`}
+            onClick={(e) => e.stopPropagation()}
+            className="py-2 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-900 border border-amber-200/80 text-xs font-bold flex items-center justify-center gap-1 transition-colors shrink-0"
+          >
+            <span>✨ देखावा पहा</span>
+            <span className="text-[11px]">→</span>
+          </Link>
+        )}
       </div>
     </div>
   );
