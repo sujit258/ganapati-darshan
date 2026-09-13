@@ -4,6 +4,8 @@ import './globals.css';
 import { DarshanProvider } from '@/context/DarshanContext';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const notoDevanagari = Noto_Sans_Devanagari({
   subsets: ['devanagari', 'latin'],
@@ -68,6 +70,8 @@ export default function RootLayout({
             <BottomNav />
           </div>
         </DarshanProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
