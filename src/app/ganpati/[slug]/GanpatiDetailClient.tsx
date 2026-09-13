@@ -13,6 +13,8 @@ import {
   Sparkles,
   BookOpen,
   Compass,
+  Car,
+  Footprints,
 } from 'lucide-react';
 import { Ganpati } from '@/types/ganpati';
 import { useDarshan } from '@/context/DarshanContext';
@@ -32,6 +34,8 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
     visitedIds,
     toggleVisited,
     travelMode,
+    selectedAccessPoint,
+    vehicleApproach,
     requestLocation,
     isLoadingLocation,
   } = useDarshan();
@@ -47,15 +51,35 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
       )
     : null;
 
-  // Directions URL: Only pass origin if real GPS coordinates are available
-  // If userLocation is a preset, omit origin so Google Maps uses the user's actual device location
-  const directionsUrl = getDirectionsUrl(
+  // Walking distance from selected vehicle access point to this Ganpati
+  const walkingFromAccessPointMeters = selectedAccessPoint
+    ? calculateDistanceMeters(
+        selectedAccessPoint.coordinates.latitude,
+        selectedAccessPoint.coordinates.longitude,
+        ganpati.coordinates.latitude,
+        ganpati.coordinates.longitude
+      )
+    : null;
+
+  // Directions URL: Google Maps walking navigation for central Pune Ganpati
+  const walkingDirectionsUrl = getDirectionsUrl(
     ganpati.coordinates.latitude,
     ganpati.coordinates.longitude,
     isRealLocation ? userLocation?.latitude : undefined,
     isRealLocation ? userLocation?.longitude : undefined,
-    travelMode
+    'walking'
   );
+
+  // Driving directions URL to the vehicle access point
+  const accessPointDirectionsUrl = selectedAccessPoint
+    ? getDirectionsUrl(
+        selectedAccessPoint.coordinates.latitude,
+        selectedAccessPoint.coordinates.longitude,
+        isRealLocation ? userLocation?.latitude : undefined,
+        isRealLocation ? userLocation?.longitude : undefined,
+        'vehicle'
+      )
+    : walkingDirectionsUrl;
 
   // Find sequence position in active route
   const stopIndex = routeStops.findIndex((s) => s.ganpati.id === ganpati.id);
@@ -155,68 +179,142 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
             </div>
           )}
 
-          {/* Distance Info & Action (Cases A, B, C) */}
-          {isRealLocation && distance !== null ? (
-            /* CASE A: Real browser location available */
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between text-xs">
-              <span className="text-slate-700 font-medium">
-                📍 तुमच्यापासून अंतर:
-              </span>
-              <span className="font-bold text-saffron-800 text-sm">
-                {formatMarathiDistance(distance)}
-              </span>
+          {/* Distance Info & Action: Walking vs Vehicle Multi-Modal */}
+          {travelMode === 'vehicle' && selectedAccessPoint ? (
+            /* VEHICLE MODE: Show vehicle approach + walking leg */
+            <div className="space-y-2">
+              <div className="bg-orange-50/70 border border-orange-200/80 rounded-xl p-3 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-orange-950 font-bold flex items-center gap-1">
+                    <Car size={13} className="text-saffron-600" />
+                    <span>🚗 वाहनाने परिसर:</span>
+                    <strong className="text-slate-900">{selectedAccessPoint.name}</strong>
+                  </span>
+                  <span className="font-bold text-saffron-800 text-xs">
+                    {vehicleApproach ? `${vehicleApproach.distanceFormatted} (वाहनाने अंदाजे अंतर)` : 'अंदाजे अंतर'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1.5 border-t border-orange-200/60">
+                  <span className="text-slate-700 font-medium flex items-center gap-1">
+                    <Footprints size={13} className="text-emerald-700" />
+                    <span>🚶 {selectedAccessPoint.shortName} येथून पायी अंतर:</span>
+                  </span>
+                  <span className="font-bold text-emerald-800 text-xs">
+                    {walkingFromAccessPointMeters ? `${formatMarathiDistance(walkingFromAccessPointMeters)} (पायी अंदाजे अंतर)` : ''}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <a
+                  href={walkingDirectionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-3 px-3 bg-saffron-600 hover:bg-saffron-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 text-xs sm:text-sm transition-all"
+                >
+                  <Footprints size={15} />
+                  <span>या गणपतीकडे पायी दिशा (Maps)</span>
+                </a>
+
+                <a
+                  href={accessPointDirectionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-3 px-3 bg-orange-50 hover:bg-orange-100 border border-orange-300 active:scale-[0.98] text-orange-950 font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs transition-all shrink-0"
+                >
+                  <Car size={15} className="text-saffron-600" />
+                  <span>{selectedAccessPoint.shortName} पर्यंत वाहन दिशा</span>
+                </a>
+              </div>
             </div>
-          ) : userLocation && userLocation.isPreset && distance !== null ? (
-            /* CASE C: Fallback route start selected (e.g. Shaniwar Wada) */
-            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
+          ) : isRealLocation && distance !== null ? (
+            /* WALKING MODE: Real browser location available */
+            <div className="space-y-2.5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between text-xs">
                 <span className="text-slate-700 font-medium">
-                  📍 सुरुवातीचे ठिकाण: <strong className="text-slate-900">{userLocation.presetName || 'शनिवार वाडा'}</strong>
+                  📍 तुमच्यापासून अंतर:
                 </span>
                 <span className="font-bold text-saffron-800 text-sm">
-                  {formatMarathiDistance(distance)} (अंदाजे)
+                  {formatMarathiDistance(distance)} (पायी अंदाजे अंतर)
                 </span>
               </div>
-              <div className="flex items-center justify-between pt-1.5 border-t border-amber-200/60 text-[11px]">
-                <span className="text-slate-500">
-                  सध्याच्या स्थानावरून अंतर हवे आहे?
+
+              <a
+                href={walkingDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 bg-saffron-600 hover:bg-saffron-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all"
+              >
+                <Navigation size={16} />
+                <span>दिशा मिळवा (Google Maps पायी)</span>
+              </a>
+            </div>
+          ) : userLocation && userLocation.isPreset && distance !== null ? (
+            /* WALKING MODE: Fallback route start selected (e.g. Shaniwar Wada) */
+            <div className="space-y-2.5">
+              <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-700 font-medium">
+                    📍 सुरुवातीचे ठिकाण: <strong className="text-slate-900">{userLocation.presetName || 'शनिवार वाडा'}</strong>
+                  </span>
+                  <span className="font-bold text-saffron-800 text-sm">
+                    {formatMarathiDistance(distance)} (पायी अंदाजे अंतर)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1.5 border-t border-amber-200/60 text-[11px]">
+                  <span className="text-slate-500">
+                    सध्याच्या स्थानावरून अंतर हवे आहे?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={requestLocation}
+                    disabled={isLoadingLocation}
+                    className="font-bold text-saffron-700 hover:text-saffron-800 underline active:scale-95 transition-all"
+                  >
+                    {isLoadingLocation ? 'शोधत आहे...' : 'सध्याचे स्थान मिळवा'}
+                  </button>
+                </div>
+              </div>
+
+              <a
+                href={walkingDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 bg-saffron-600 hover:bg-saffron-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all"
+              >
+                <Navigation size={16} />
+                <span>दिशा मिळवा (Google Maps पायी)</span>
+              </a>
+            </div>
+          ) : (
+            /* WALKING MODE: Location unavailable */
+            <div className="space-y-2.5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between text-xs">
+                <span className="text-slate-600 font-medium">
+                  📍 तुमचे स्थान मिळाले नाही
                 </span>
                 <button
                   type="button"
                   onClick={requestLocation}
                   disabled={isLoadingLocation}
-                  className="font-bold text-saffron-700 hover:text-saffron-800 underline active:scale-95 transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-saffron-600 hover:bg-saffron-700 text-white font-bold text-xs active:scale-95 transition-all shadow-xs"
                 >
-                  {isLoadingLocation ? 'शोधत आहे...' : 'सध्याचे स्थान मिळवा'}
+                  {isLoadingLocation ? 'शोधत आहे...' : 'स्थान मिळवा'}
                 </button>
               </div>
-            </div>
-          ) : (
-            /* CASE B: Location unavailable */
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between text-xs">
-              <span className="text-slate-600 font-medium">
-                📍 तुमचे स्थान मिळाले नाही
-              </span>
-              <button
-                type="button"
-                onClick={requestLocation}
-                disabled={isLoadingLocation}
-                className="px-3 py-1.5 rounded-lg bg-saffron-600 hover:bg-saffron-700 text-white font-bold text-xs active:scale-95 transition-all shadow-xs"
+
+              <a
+                href={walkingDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 bg-saffron-600 hover:bg-saffron-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all"
               >
-                {isLoadingLocation ? 'शोधत आहे...' : 'स्थान मिळवा'}
-              </button>
+                <Navigation size={16} />
+                <span>दिशा मिळवा (Google Maps)</span>
+              </a>
             </div>
           )}
-
-          <a
-            href={directionsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full py-3.5 px-4 bg-saffron-600 hover:bg-saffron-700 active:scale-[0.98] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition-all"
-          >
-            <Navigation size={16} />
-            <span>दिशा मिळवा (Google Maps)</span>
-          </a>
         </div>
       </div>
 

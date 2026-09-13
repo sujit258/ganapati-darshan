@@ -1,4 +1,4 @@
-import { Ganpati } from '@/types/ganpati';
+import { Ganpati, VehicleAccessPoint } from '@/types/ganpati';
 
 /**
  * Verified, structured dataset for Pune Ganpati Darshan (Phase 1: 9 Ganpatis)
@@ -294,4 +294,55 @@ export const PRESET_START_LOCATIONS = [
     longitude: 73.858734,
     description: 'दक्षिण पुण्यातून येणाऱ्या भाविकांसाठी'
   }
+];
+
+/**
+ * Neutral vehicle access / approach points for central Pune Ganpati Darshan
+ * Vehicles drop/park at these outer access perimeters, after which the Darshan is completed on foot.
+ */
+export const VEHICLE_ACCESS_POINTS: VehicleAccessPoint[] = [
+  {
+    id: 'shaniwar-wada',
+    name: 'शनिवारवाडा परिसर',
+    shortName: 'शनिवारवाडा',
+    area: 'मध्यवर्ती पुणे (उत्तर प्रवेश)',
+    description: 'शिवाजी पूल व शनिवारवाडा बाहेरील परिसर',
+    coordinates: {
+      latitude: 18.519572,
+      longitude: 73.855324,
+    },
+  },
+  {
+    id: 'deccan',
+    name: 'डेक्कन परिसर',
+    shortName: 'डेक्कन',
+    area: 'पश्चिम पुणे (संभाजी पूल)',
+    description: 'डेक्कन जिमखाना व संभाजी पुलाकडून पायी प्रवेश',
+    coordinates: {
+      latitude: 18.517316,
+      longitude: 73.841525,
+    },
+  },
+  {
+    id: 'swargate',
+    name: 'स्वारगेट परिसर',
+    shortName: 'स्वारगेट',
+    area: 'दक्षिण पुणे (शिवाजी रस्ता)',
+    description: 'स्वारगेट चौक व मंडईकडे येणारा बाहेरील परिसर',
+    coordinates: {
+      latitude: 18.500980,
+      longitude: 73.858734,
+    },
+  },
+  {
+    id: 'shivajinagar',
+    name: 'शिवाजीनगर परिसर',
+    shortName: 'शिवाजीनगर',
+    area: 'उत्तर-पश्चिम पुणे (मनपा भवन)',
+    description: 'शिवाजीनगर व मनपा भवन बाहेरील परिसर',
+    coordinates: {
+      latitude: 18.531200,
+      longitude: 73.851900,
+    },
+  },
 ];

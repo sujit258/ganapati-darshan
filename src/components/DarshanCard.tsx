@@ -6,7 +6,7 @@ import { GanpatiImage } from '@/components/GanpatiImage';
 import { Navigation, BookOpen, Check, CheckCircle2 } from 'lucide-react';
 import { DarshanStop } from '@/types/ganpati';
 import { formatMarathiDistance, formatMarathiTravelTime } from '@/lib/distance';
-import { toMarathiOrdinal } from '@/lib/marathiNumbers';
+import { toMarathiNumber, toMarathiOrdinal } from '@/lib/marathiNumbers';
 import { getDirectionsUrl } from '@/lib/maps';
 import { useDarshan } from '@/context/DarshanContext';
 
@@ -32,7 +32,7 @@ export const DarshanCard: React.FC<Props> = ({ stop, isCurrentTarget = false }) 
     ganpati.coordinates.longitude,
     isRealLocation ? userLocation?.latitude : undefined,
     isRealLocation ? userLocation?.longitude : undefined,
-    travelMode
+    'walking'
   );
 
   return (
@@ -116,10 +116,10 @@ export const DarshanCard: React.FC<Props> = ({ stop, isCurrentTarget = false }) 
 
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs font-medium text-slate-600">
               <span className="text-saffron-700 font-semibold">
-                📍 {legLabel} {legDistanceFormatted}
+                📍 {legLabel} {legDistanceFormatted} (पायी अंदाजे अंतर)
               </span>
               <span>•</span>
-              <span>{formatMarathiTravelTime(walkingMinutes, drivingMinutes, travelMode)}</span>
+              <span>🚶 {toMarathiNumber(walkingMinutes)} मिनिटे पायी</span>
             </div>
           </div>
         </div>

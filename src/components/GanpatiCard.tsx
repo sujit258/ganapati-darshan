@@ -31,7 +31,7 @@ export const GanpatiCard: React.FC<Props> = ({ ganpati }) => {
     ganpati.coordinates.longitude,
     isRealLocation ? userLocation?.latitude : undefined,
     isRealLocation ? userLocation?.longitude : undefined,
-    travelMode
+    'walking'
   );
 
   return (
@@ -87,8 +87,8 @@ export const GanpatiCard: React.FC<Props> = ({ ganpati }) => {
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
             <span className="text-saffron-700 font-semibold">
               {isRealLocation
-                ? `📍 तुमच्यापासून: ${formatMarathiDistance(distance)}`
-                : `📍 ${userLocation?.presetName || 'शनिवार वाड्यापासून'}: ${formatMarathiDistance(distance)}`}
+                ? `📍 तुमच्यापासून अंतर: ${formatMarathiDistance(distance)} (अंदाजे)`
+                : `📍 सुरुवातीचे ठिकाण (${userLocation?.presetName || 'शनिवार वाडा'}): ${formatMarathiDistance(distance)} (अंदाजे)`}
             </span>
             <span className="text-xs text-slate-400 group-hover:text-saffron-600 font-medium flex items-center">
               माहिती पहा <ChevronRight size={14} />

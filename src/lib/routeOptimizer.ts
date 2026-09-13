@@ -1,4 +1,11 @@
-import { Ganpati, DarshanStop, Coordinate, RouteSummary } from '@/types/ganpati';
+import {
+  Ganpati,
+  DarshanStop,
+  Coordinate,
+  RouteSummary,
+  VehicleAccessPoint,
+  VehicleApproachInfo,
+} from '@/types/ganpati';
 import { GANPATIS } from '@/data/ganpatis';
 import {
   calculateDistanceMeters,
@@ -89,7 +96,7 @@ export function calculateOptimalDarshanRoute(
     // Update currentLoc to this Ganpati for the next stop's distance
     currentLoc = ganpati.coordinates;
 
-    // Requirement 7: First stop says "तुमच्या स्थानापासून" (or preset name), subsequent says "मागील गणपतीपासून"
+    // First stop uses startName, subsequent stops use "मागील गणपतीपासून"
     const legLabel = index === 0 ? startName : 'मागील गणपतीपासून';
     const legDistanceFormatted = formatMarathiDistance(dist);
 
@@ -110,24 +117,74 @@ export function calculateOptimalDarshanRoute(
 }
 
 /**
+ * Calculates the vehicle approach leg from user coordinates to the chosen access point
+ */
+export function calculateVehicleApproach(
+  userLocation: Coordinate,
+  accessPoint: VehicleAccessPoint
+): VehicleApproachInfo {
+  const dist = calculateDistanceMeters(
+    userLocation.latitude,
+    userLocation.longitude,
+    accessPoint.coordinates.latitude,
+    accessPoint.coordinates.longitude
+  );
+  const { drivingMinutes } = calculateTravelTimes(dist);
+
+  return {
+    accessPoint,
+    distanceMeters: dist,
+    distanceFormatted: formatMarathiDistance(dist),
+    durationMinutes: drivingMinutes,
+    durationFormatted: formatDuration(drivingMinutes),
+  };
+}
+
+/**
  * Calculates complete planned route summary (Start -> all stops)
- * Independent of whether some stops have been marked visited.
+ * Supports both walking-only mode and multi-modal vehicle mode.
  */
 export function calculateRouteSummary(
   stops: DarshanStop[],
-  startName: string = 'तुमचे सध्याचे स्थान'
+  startName: string = 'तुमचे सध्याचे स्थान',
+  vehicleApproach?: VehicleApproachInfo
 ): RouteSummary {
   const totalGanpatis = stops.length;
-  const totalDistanceMeters = stops.reduce((sum, stop) => sum + stop.distanceMeters, 0);
-  const totalDistanceFormatted = formatMarathiDistance(totalDistanceMeters);
+  const walkingDistanceMeters = stops.reduce((sum, stop) => sum + stop.distanceMeters, 0);
+  const walkingDistanceFormatted = formatMarathiDistance(walkingDistanceMeters);
+  const { walkingMinutes } = calculateTravelTimes(walkingDistanceMeters);
 
-  const { walkingMinutes, drivingMinutes } = calculateTravelTimes(totalDistanceMeters);
+  if (vehicleApproach) {
+    // In vehicle mode:
+    // Vehicle portion: user -> access point
+    // Walking portion: access point -> all 9 Ganpatis
+    const totalDistanceMeters = vehicleApproach.distanceMeters + walkingDistanceMeters;
+    const totalDistanceFormatted = formatMarathiDistance(totalDistanceMeters);
+
+    return {
+      startName,
+      totalGanpatis,
+      totalDistanceMeters,
+      totalDistanceFormatted,
+      estimatedWalkingMinutes: walkingMinutes,
+      estimatedVehicleMinutes: vehicleApproach.durationMinutes,
+      formattedWalkingDuration: formatDuration(walkingMinutes),
+      formattedVehicleDuration: vehicleApproach.durationFormatted,
+      vehicleApproach,
+      walkingOnlyDistanceMeters: walkingDistanceMeters,
+      walkingOnlyDistanceFormatted: walkingDistanceFormatted,
+      walkingOnlyMinutes: walkingMinutes,
+      walkingOnlyDurationFormatted: formatDuration(walkingMinutes),
+    };
+  }
+
+  const { drivingMinutes } = calculateTravelTimes(walkingDistanceMeters);
 
   return {
     startName,
     totalGanpatis,
-    totalDistanceMeters,
-    totalDistanceFormatted,
+    totalDistanceMeters: walkingDistanceMeters,
+    totalDistanceFormatted: walkingDistanceFormatted,
     estimatedWalkingMinutes: walkingMinutes,
     estimatedVehicleMinutes: drivingMinutes,
     formattedWalkingDuration: formatDuration(walkingMinutes),

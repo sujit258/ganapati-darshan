@@ -39,6 +39,23 @@ export interface DarshanStop {
   legDistanceFormatted: string; // e.g. "६५० मीटर" or "१.२ किमी"
 }
 
+export interface VehicleAccessPoint {
+  id: string;
+  name: string;
+  shortName: string;
+  area: string;
+  description: string;
+  coordinates: Coordinate;
+}
+
+export interface VehicleApproachInfo {
+  accessPoint: VehicleAccessPoint;
+  distanceMeters: number;
+  distanceFormatted: string;
+  durationMinutes: number;
+  durationFormatted: string;
+}
+
 export interface RouteSummary {
   startName: string;
   totalGanpatis: number;
@@ -48,6 +65,12 @@ export interface RouteSummary {
   estimatedVehicleMinutes: number;
   formattedWalkingDuration: string;
   formattedVehicleDuration: string;
+  // Multi-modal vehicle mode fields
+  vehicleApproach?: VehicleApproachInfo;
+  walkingOnlyDistanceMeters?: number;
+  walkingOnlyDistanceFormatted?: string;
+  walkingOnlyMinutes?: number;
+  walkingOnlyDurationFormatted?: string;
 }
 
 export interface UserLocation {

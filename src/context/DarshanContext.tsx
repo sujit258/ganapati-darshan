@@ -7,10 +7,16 @@ import {
   LocationPermissionStatus,
   TravelMode,
   RouteSummary,
+  VehicleAccessPoint,
+  VehicleApproachInfo,
 } from '@/types/ganpati';
-import { GANPATIS, PRESET_START_LOCATIONS } from '@/data/ganpatis';
-import { calculateOptimalDarshanRoute, calculateRouteSummary } from '@/lib/routeOptimizer';
-import { isWithinPune } from '@/lib/distance';
+import { GANPATIS, PRESET_START_LOCATIONS, VEHICLE_ACCESS_POINTS } from '@/data/ganpatis';
+import {
+  calculateOptimalDarshanRoute,
+  calculateRouteSummary,
+  calculateVehicleApproach,
+} from '@/lib/routeOptimizer';
+import { isWithinPune, calculateDistanceMeters } from '@/lib/distance';
 
 interface DarshanContextType {
   userLocation: UserLocation | null;
@@ -23,6 +29,12 @@ interface DarshanContextType {
   isTraditionalMode: boolean;
   travelMode: TravelMode;
   setTravelMode: (mode: TravelMode) => void;
+  vehicleAccessPoints: VehicleAccessPoint[];
+  selectedAccessPoint: VehicleAccessPoint;
+  selectedAccessPointId: string;
+  setSelectedAccessPointId: (id: string) => void;
+  recommendedAccessPoint: VehicleAccessPoint;
+  vehicleApproach: VehicleApproachInfo | null;
   isPlanningMode: boolean;
   setIsPlanningMode: (val: boolean) => void;
   startDarshan: () => void;
@@ -69,6 +81,8 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isTraditionalMode, setIsTraditionalMode] = useState<boolean>(false);
   const [travelMode, setTravelModeState] = useState<TravelMode>('walking');
+  const [selectedAccessPointId, setSelectedAccessPointIdState] = useState<string>('shaniwar-wada');
+  const [hasManuallySelectedAccessPoint, setHasManuallySelectedAccessPoint] = useState<boolean>(false);
   const [isPlanningMode, setIsPlanningMode] = useState<boolean>(true);
   const [showPermissionModal, setShowPermissionModal] = useState<boolean>(false);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
@@ -106,6 +120,13 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         if (parsed.travelMode === 'walking' || parsed.travelMode === 'vehicle') {
           setTravelModeState(parsed.travelMode);
+        }
+        if (
+          parsed.selectedAccessPointId &&
+          VEHICLE_ACCESS_POINTS.some((p) => p.id === parsed.selectedAccessPointId)
+        ) {
+          setSelectedAccessPointIdState(parsed.selectedAccessPointId);
+          setHasManuallySelectedAccessPoint(true);
         }
         if (typeof parsed.isTraditionalMode === 'boolean') {
           setIsTraditionalMode(parsed.isTraditionalMode);
@@ -155,6 +176,7 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
         visitedIds: Array.from(visitedIds),
         userLocation,
         travelMode,
+        selectedAccessPointId,
         isTraditionalMode,
         isPlanningMode,
       };
@@ -162,7 +184,20 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (e) {
       console.error('Failed to save state to localStorage', e);
     }
-  }, [visitedIds, userLocation, travelMode, isTraditionalMode, isPlanningMode, isInitialized]);
+  }, [
+    visitedIds,
+    userLocation,
+    travelMode,
+    selectedAccessPointId,
+    isTraditionalMode,
+    isPlanningMode,
+    isInitialized,
+  ]);
+
+  const setSelectedAccessPointId = useCallback((id: string) => {
+    setSelectedAccessPointIdState(id);
+    setHasManuallySelectedAccessPoint(true);
+  }, []);
 
   // Set travel mode without regenerating the route order
   const setTravelMode = useCallback((mode: TravelMode) => {
@@ -304,8 +339,68 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
     ? 'तुमच्या स्थानापासून'
     : 'शनिवार वाड्यापासून';
 
+  // Dynamic recommendation for vehicle approach point (closest to user/start coordinates)
+  const recommendedAccessPoint = useMemo(() => {
+    let closest = VEHICLE_ACCESS_POINTS[0];
+    let minD = Infinity;
+    for (const ap of VEHICLE_ACCESS_POINTS) {
+      const d = calculateDistanceMeters(
+        activeCoordinates.latitude,
+        activeCoordinates.longitude,
+        ap.coordinates.latitude,
+        ap.coordinates.longitude
+      );
+      if (d < minD) {
+        minD = d;
+        closest = ap;
+      }
+    }
+    return closest;
+  }, [activeCoordinates]);
+
+  // If user hasn't explicitly chosen an access point, automatically adopt recommended
+  useEffect(() => {
+    if (!hasManuallySelectedAccessPoint && recommendedAccessPoint) {
+      setSelectedAccessPointIdState(recommendedAccessPoint.id);
+    }
+  }, [recommendedAccessPoint, hasManuallySelectedAccessPoint]);
+
+  // Selected vehicle approach point
+  const selectedAccessPoint = useMemo(() => {
+    return (
+      VEHICLE_ACCESS_POINTS.find((ap) => ap.id === selectedAccessPointId) ||
+      recommendedAccessPoint
+    );
+  }, [selectedAccessPointId, recommendedAccessPoint]);
+
+  // Vehicle approach leg (User location -> selected access point)
+  const vehicleApproach = useMemo(() => {
+    if (travelMode !== 'vehicle') return null;
+    return calculateVehicleApproach(
+      {
+        latitude: activeCoordinates.latitude,
+        longitude: activeCoordinates.longitude,
+      },
+      selectedAccessPoint
+    );
+  }, [travelMode, activeCoordinates, selectedAccessPoint]);
+
   // Compute the darshan route dynamically
+  // In vehicle mode: Cars drive to selectedAccessPoint, and walking darshan sequence begins from there!
+  // In walking mode: The entire journey is walked from activeCoordinates.
   const routeStops = useMemo(() => {
+    if (travelMode === 'vehicle') {
+      return calculateOptimalDarshanRoute({
+        userLocation: {
+          latitude: selectedAccessPoint.coordinates.latitude,
+          longitude: selectedAccessPoint.coordinates.longitude,
+        },
+        visitedIds,
+        forceTraditionalOrder: isTraditionalMode,
+        startName: `${selectedAccessPoint.shortName} येथून (पायी)`,
+      });
+    }
+
     return calculateOptimalDarshanRoute({
       userLocation: {
         latitude: activeCoordinates.latitude,
@@ -315,12 +410,13 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
       forceTraditionalOrder: isTraditionalMode,
       startName: startLegName,
     });
-  }, [activeCoordinates, visitedIds, isTraditionalMode, startLegName]);
+  }, [travelMode, selectedAccessPoint, activeCoordinates, visitedIds, isTraditionalMode, startLegName]);
 
   // Compute full day's route summary (Start -> all 9 Ganpatis)
+  // Supports multi-modal vehicle approach info when in vehicle mode
   const routeSummary = useMemo(() => {
-    return calculateRouteSummary(routeStops, startDisplayName);
-  }, [routeStops, startDisplayName]);
+    return calculateRouteSummary(routeStops, startDisplayName, vehicleApproach || undefined);
+  }, [routeStops, startDisplayName, vehicleApproach]);
 
   // Current target stop (the first unvisited stop in sequence)
   const currentStop = useMemo(() => {
@@ -354,6 +450,12 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isTraditionalMode,
         travelMode,
         setTravelMode,
+        vehicleAccessPoints: VEHICLE_ACCESS_POINTS,
+        selectedAccessPoint,
+        selectedAccessPointId,
+        setSelectedAccessPointId,
+        recommendedAccessPoint,
+        vehicleApproach,
         isPlanningMode,
         setIsPlanningMode,
         startDarshan,
