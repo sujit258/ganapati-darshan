@@ -16,7 +16,7 @@ interface Props {
 }
 
 export const DarshanCard: React.FC<Props> = ({ stop, isCurrentTarget = false }) => {
-  const { toggleVisited, userLocation, travelMode } = useDarshan();
+  const { toggleVisited, userLocation, isRealLocation, travelMode } = useDarshan();
   const {
     ganpati,
     sequenceNumber,
@@ -30,8 +30,8 @@ export const DarshanCard: React.FC<Props> = ({ stop, isCurrentTarget = false }) 
   const directionsUrl = getDirectionsUrl(
     ganpati.coordinates.latitude,
     ganpati.coordinates.longitude,
-    userLocation?.latitude,
-    userLocation?.longitude,
+    isRealLocation ? userLocation?.latitude : undefined,
+    isRealLocation ? userLocation?.longitude : undefined,
     travelMode
   );
 

@@ -14,6 +14,7 @@ import { isWithinPune } from '@/lib/distance';
 
 interface DarshanContextType {
   userLocation: UserLocation | null;
+  isRealLocation: boolean;
   permissionStatus: LocationPermissionStatus;
   isOutsidePune: boolean;
   routeStops: DarshanStop[];
@@ -85,8 +86,23 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
           }
         }
         if (parsed.userLocation && typeof parsed.userLocation.latitude === 'number') {
-          setUserLocation(parsed.userLocation);
-          setPermissionStatus('granted');
+          const isPreset = Boolean(parsed.userLocation.isPreset);
+          const LOCATION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes freshness
+          const isFresh =
+            typeof parsed.userLocation.timestamp === 'number' &&
+            Date.now() - parsed.userLocation.timestamp < LOCATION_MAX_AGE_MS;
+
+          if (isPreset) {
+            setUserLocation(parsed.userLocation);
+            setPermissionStatus('granted');
+          } else if (isFresh) {
+            setUserLocation(parsed.userLocation);
+            setPermissionStatus('granted');
+          } else {
+            // Stale GPS coordinates: reset so we do not show outdated distance
+            setUserLocation(null);
+            setPermissionStatus('prompt');
+          }
         }
         if (parsed.travelMode === 'walking' || parsed.travelMode === 'vehicle') {
           setTravelModeState(parsed.travelMode);
@@ -113,7 +129,7 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const storedLocation = localStorage.getItem(LEGACY_KEYS.LOCATION);
         if (storedLocation) {
           const parsedLoc = JSON.parse(storedLocation);
-          if (parsedLoc && typeof parsedLoc.latitude === 'number') {
+          if (parsedLoc && typeof parsedLoc.latitude === 'number' && parsedLoc.isPreset) {
             setUserLocation(parsedLoc);
             setPermissionStatus('granted');
           }
@@ -221,6 +237,7 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
         longitude: found.longitude,
         isPreset: true,
         presetName: found.name,
+        timestamp: Date.now(),
       };
       setUserLocation(loc);
       setPermissionStatus('granted');
@@ -268,12 +285,22 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsPlanningMode(true);
   }, []);
 
+  // Check whether current userLocation is a real, fresh GPS location
+  const isRealLocation = useMemo(() => {
+    if (!userLocation || userLocation.isPreset) return false;
+    const LOCATION_MAX_AGE_MS = 30 * 60 * 1000; // 30 minutes freshness
+    if (userLocation.timestamp && Date.now() - userLocation.timestamp > LOCATION_MAX_AGE_MS) {
+      return false;
+    }
+    return true;
+  }, [userLocation]);
+
   // Compute active coordinates and start name
   const activeCoordinates = userLocation || DEFAULT_COORDINATES;
-  const startDisplayName = userLocation?.presetName || (userLocation ? 'तुमचे सध्याचे स्थान' : 'शनिवार वाडा');
+  const startDisplayName = userLocation?.presetName || (isRealLocation ? 'तुमचे सध्याचे स्थान' : 'शनिवार वाडा');
   const startLegName = userLocation?.presetName
     ? `${userLocation.presetName} येथून`
-    : userLocation
+    : isRealLocation
     ? 'तुमच्या स्थानापासून'
     : 'शनिवार वाड्यापासून';
 
@@ -318,6 +345,7 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
     <DarshanContext.Provider
       value={{
         userLocation,
+        isRealLocation,
         permissionStatus,
         isOutsidePune,
         routeStops,

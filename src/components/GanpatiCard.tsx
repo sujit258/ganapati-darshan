@@ -14,7 +14,7 @@ interface Props {
 }
 
 export const GanpatiCard: React.FC<Props> = ({ ganpati }) => {
-  const { userLocation, visitedIds } = useDarshan();
+  const { userLocation, isRealLocation, visitedIds, travelMode } = useDarshan();
   const isVisited = visitedIds.has(ganpati.id);
 
   const distance = userLocation
@@ -29,8 +29,9 @@ export const GanpatiCard: React.FC<Props> = ({ ganpati }) => {
   const directionsUrl = getDirectionsUrl(
     ganpati.coordinates.latitude,
     ganpati.coordinates.longitude,
-    userLocation?.latitude,
-    userLocation?.longitude
+    isRealLocation ? userLocation?.latitude : undefined,
+    isRealLocation ? userLocation?.longitude : undefined,
+    travelMode
   );
 
   return (
@@ -85,7 +86,9 @@ export const GanpatiCard: React.FC<Props> = ({ ganpati }) => {
         {distance !== null && (
           <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
             <span className="text-saffron-700 font-semibold">
-              📍 अंतर: {formatMarathiDistance(distance)}
+              {isRealLocation
+                ? `📍 तुमच्यापासून: ${formatMarathiDistance(distance)}`
+                : `📍 ${userLocation?.presetName || 'शनिवार वाड्यापासून'}: ${formatMarathiDistance(distance)}`}
             </span>
             <span className="text-xs text-slate-400 group-hover:text-saffron-600 font-medium flex items-center">
               माहिती पहा <ChevronRight size={14} />

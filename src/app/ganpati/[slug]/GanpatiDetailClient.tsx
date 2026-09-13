@@ -25,10 +25,19 @@ interface Props {
 }
 
 export default function GanpatiDetailClient({ ganpati }: Props) {
-  const { userLocation, routeStops, visitedIds, toggleVisited } = useDarshan();
+  const {
+    userLocation,
+    isRealLocation,
+    routeStops,
+    visitedIds,
+    toggleVisited,
+    travelMode,
+    requestLocation,
+    isLoadingLocation,
+  } = useDarshan();
   const isVisited = visitedIds.has(ganpati.id);
 
-  // Distance from user
+  // Distance from active userLocation (real GPS or preset start)
   const distance = userLocation
     ? calculateDistanceMeters(
         userLocation.latitude,
@@ -38,12 +47,14 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
       )
     : null;
 
-  // Directions URL
+  // Directions URL: Only pass origin if real GPS coordinates are available
+  // If userLocation is a preset, omit origin so Google Maps uses the user's actual device location
   const directionsUrl = getDirectionsUrl(
     ganpati.coordinates.latitude,
     ganpati.coordinates.longitude,
-    userLocation?.latitude,
-    userLocation?.longitude
+    isRealLocation ? userLocation?.latitude : undefined,
+    isRealLocation ? userLocation?.longitude : undefined,
+    travelMode
   );
 
   // Find sequence position in active route
@@ -144,8 +155,9 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
             </div>
           )}
 
-          {/* Distance Info & Navigation CTA */}
-          {distance !== null && (
+          {/* Distance Info & Action (Cases A, B, C) */}
+          {isRealLocation && distance !== null ? (
+            /* CASE A: Real browser location available */
             <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between text-xs">
               <span className="text-slate-700 font-medium">
                 📍 तुमच्यापासून अंतर:
@@ -153,6 +165,46 @@ export default function GanpatiDetailClient({ ganpati }: Props) {
               <span className="font-bold text-saffron-800 text-sm">
                 {formatMarathiDistance(distance)}
               </span>
+            </div>
+          ) : userLocation && userLocation.isPreset && distance !== null ? (
+            /* CASE C: Fallback route start selected (e.g. Shaniwar Wada) */
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-700 font-medium">
+                  📍 सुरुवातीचे ठिकाण: <strong className="text-slate-900">{userLocation.presetName || 'शनिवार वाडा'}</strong>
+                </span>
+                <span className="font-bold text-saffron-800 text-sm">
+                  {formatMarathiDistance(distance)} (अंदाजे)
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1.5 border-t border-amber-200/60 text-[11px]">
+                <span className="text-slate-500">
+                  सध्याच्या स्थानावरून अंतर हवे आहे?
+                </span>
+                <button
+                  type="button"
+                  onClick={requestLocation}
+                  disabled={isLoadingLocation}
+                  className="font-bold text-saffron-700 hover:text-saffron-800 underline active:scale-95 transition-all"
+                >
+                  {isLoadingLocation ? 'शोधत आहे...' : 'सध्याचे स्थान मिळवा'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* CASE B: Location unavailable */
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex items-center justify-between text-xs">
+              <span className="text-slate-600 font-medium">
+                📍 तुमचे स्थान मिळाले नाही
+              </span>
+              <button
+                type="button"
+                onClick={requestLocation}
+                disabled={isLoadingLocation}
+                className="px-3 py-1.5 rounded-lg bg-saffron-600 hover:bg-saffron-700 text-white font-bold text-xs active:scale-95 transition-all shadow-xs"
+              >
+                {isLoadingLocation ? 'शोधत आहे...' : 'स्थान मिळवा'}
+              </button>
             </div>
           )}
 

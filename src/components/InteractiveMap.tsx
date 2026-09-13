@@ -64,9 +64,13 @@ export const InteractiveMap: React.FC = () => {
         iconAnchor: [14, 14],
       });
 
+      const markerPopupText = userLocation.isPreset
+        ? `📍 सुरुवातीचे ठिकाण: ${userLocation.presetName || 'शनिवार वाडा'}`
+        : '📍 तुमचे सध्याचे स्थान';
+
       L.marker([userLocation.latitude, userLocation.longitude], { icon: userIcon })
         .addTo(map)
-        .bindPopup('<strong style="font-family:system-ui;">📍 तुमचे सध्याचे स्थान</strong>');
+        .bindPopup(`<strong style="font-family:system-ui;">${markerPopupText}</strong>`);
     }
 
     // Coordinates path for route polyline
