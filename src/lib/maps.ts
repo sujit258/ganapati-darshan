@@ -1,20 +1,23 @@
+import { TravelMode } from '@/types/ganpati';
+
 /**
- * Generates a Google Maps directions URL for walking navigation to a Ganpati destination
+ * Generates a Google Maps directions URL for walking or driving navigation to a Ganpati destination
  */
 export function getDirectionsUrl(
   destLat: number,
   destLon: number,
   userLat?: number,
-  userLon?: number
+  userLon?: number,
+  travelMode: TravelMode = 'walking'
 ): string {
   const base = 'https://www.google.com/maps/dir/?api=1';
   const destination = `&destination=${destLat},${destLon}`;
-  const mode = '&travelmode=walking';
-  
+  const mode = travelMode === 'vehicle' ? '&travelmode=driving' : '&travelmode=walking';
+
   if (userLat !== undefined && userLon !== undefined) {
     return `${base}&origin=${userLat},${userLon}${destination}${mode}`;
   }
-  
+
   return `${base}${destination}${mode}`;
 }
 

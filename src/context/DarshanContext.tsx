@@ -1,9 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { DarshanStop, UserLocation, LocationPermissionStatus } from '@/types/ganpati';
+import {
+  DarshanStop,
+  UserLocation,
+  LocationPermissionStatus,
+  TravelMode,
+  RouteSummary,
+} from '@/types/ganpati';
 import { GANPATIS, PRESET_START_LOCATIONS } from '@/data/ganpatis';
-import { calculateOptimalDarshanRoute } from '@/lib/routeOptimizer';
+import { calculateOptimalDarshanRoute, calculateRouteSummary } from '@/lib/routeOptimizer';
 import { isWithinPune } from '@/lib/distance';
 
 interface DarshanContextType {
@@ -11,8 +17,14 @@ interface DarshanContextType {
   permissionStatus: LocationPermissionStatus;
   isOutsidePune: boolean;
   routeStops: DarshanStop[];
+  routeSummary: RouteSummary;
   visitedIds: Set<string>;
   isTraditionalMode: boolean;
+  travelMode: TravelMode;
+  setTravelMode: (mode: TravelMode) => void;
+  isPlanningMode: boolean;
+  setIsPlanningMode: (val: boolean) => void;
+  startDarshan: () => void;
   currentStop: DarshanStop | null;
   nextStop: DarshanStop | null;
   visitedCount: number;
@@ -33,7 +45,8 @@ interface DarshanContextType {
 
 const DarshanContext = createContext<DarshanContextType | null>(null);
 
-const STORAGE_KEYS = {
+const STORAGE_KEY_V2 = 'pune_ganpati_darshan_v2';
+const LEGACY_KEYS = {
   VISITED: 'pune_ganpati_visited_v1',
   LOCATION: 'pune_ganpati_location_v1',
   MODE: 'pune_ganpati_mode_v1',
@@ -54,32 +67,62 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isTraditionalMode, setIsTraditionalMode] = useState<boolean>(false);
+  const [travelMode, setTravelModeState] = useState<TravelMode>('walking');
+  const [isPlanningMode, setIsPlanningMode] = useState<boolean>(true);
   const [showPermissionModal, setShowPermissionModal] = useState<boolean>(false);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
-  // Load state from localStorage on mount
+  // Load state from localStorage on mount (supporting v2 and migrating from v1)
   useEffect(() => {
     try {
-      const storedVisited = localStorage.getItem(STORAGE_KEYS.VISITED);
-      if (storedVisited) {
-        const parsed = JSON.parse(storedVisited);
-        if (Array.isArray(parsed)) {
-          setVisitedIds(new Set(parsed));
+      const v2Data = localStorage.getItem(STORAGE_KEY_V2);
+      if (v2Data) {
+        const parsed = JSON.parse(v2Data);
+        if (Array.isArray(parsed.visitedIds)) {
+          setVisitedIds(new Set(parsed.visitedIds));
+          if (parsed.visitedIds.length > 0) {
+            setIsPlanningMode(false);
+          }
         }
-      }
-
-      const storedLocation = localStorage.getItem(STORAGE_KEYS.LOCATION);
-      if (storedLocation) {
-        const parsedLoc = JSON.parse(storedLocation);
-        if (parsedLoc && typeof parsedLoc.latitude === 'number') {
-          setUserLocation(parsedLoc);
+        if (parsed.userLocation && typeof parsed.userLocation.latitude === 'number') {
+          setUserLocation(parsed.userLocation);
           setPermissionStatus('granted');
         }
-      }
+        if (parsed.travelMode === 'walking' || parsed.travelMode === 'vehicle') {
+          setTravelModeState(parsed.travelMode);
+        }
+        if (typeof parsed.isTraditionalMode === 'boolean') {
+          setIsTraditionalMode(parsed.isTraditionalMode);
+        }
+        if (typeof parsed.isPlanningMode === 'boolean' && (!parsed.visitedIds || parsed.visitedIds.length === 0)) {
+          setIsPlanningMode(parsed.isPlanningMode);
+        }
+      } else {
+        // Fallback to legacy v1
+        const storedVisited = localStorage.getItem(LEGACY_KEYS.VISITED);
+        if (storedVisited) {
+          const parsed = JSON.parse(storedVisited);
+          if (Array.isArray(parsed)) {
+            setVisitedIds(new Set(parsed));
+            if (parsed.length > 0) {
+              setIsPlanningMode(false);
+            }
+          }
+        }
 
-      const storedMode = localStorage.getItem(STORAGE_KEYS.MODE);
-      if (storedMode) {
-        setIsTraditionalMode(storedMode === 'traditional');
+        const storedLocation = localStorage.getItem(LEGACY_KEYS.LOCATION);
+        if (storedLocation) {
+          const parsedLoc = JSON.parse(storedLocation);
+          if (parsedLoc && typeof parsedLoc.latitude === 'number') {
+            setUserLocation(parsedLoc);
+            setPermissionStatus('granted');
+          }
+        }
+
+        const storedMode = localStorage.getItem(LEGACY_KEYS.MODE);
+        if (storedMode) {
+          setIsTraditionalMode(storedMode === 'traditional');
+        }
       }
     } catch (e) {
       console.error('Failed to load saved state from localStorage', e);
@@ -88,25 +131,32 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   }, []);
 
-  // Sync visited to localStorage
+  // Sync state to localStorage v2
   useEffect(() => {
     if (!isInitialized) return;
     try {
-      localStorage.setItem(STORAGE_KEYS.VISITED, JSON.stringify(Array.from(visitedIds)));
+      const payload = {
+        visitedIds: Array.from(visitedIds),
+        userLocation,
+        travelMode,
+        isTraditionalMode,
+        isPlanningMode,
+      };
+      localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(payload));
     } catch (e) {
-      console.error('Failed to save visited to localStorage', e);
+      console.error('Failed to save state to localStorage', e);
     }
-  }, [visitedIds, isInitialized]);
+  }, [visitedIds, userLocation, travelMode, isTraditionalMode, isPlanningMode, isInitialized]);
 
-  // Sync mode to localStorage
-  useEffect(() => {
-    if (!isInitialized) return;
-    try {
-      localStorage.setItem(STORAGE_KEYS.MODE, isTraditionalMode ? 'traditional' : 'optimal');
-    } catch (e) {
-      console.error('Failed to save mode to localStorage', e);
-    }
-  }, [isTraditionalMode, isInitialized]);
+  // Set travel mode without regenerating the route order
+  const setTravelMode = useCallback((mode: TravelMode) => {
+    setTravelModeState(mode);
+  }, []);
+
+  // Enter active darshan mode from planning screen
+  const startDarshan = useCallback(() => {
+    setIsPlanningMode(false);
+  }, []);
 
   // Check if current location is outside Pune
   const isOutsidePune = useMemo(() => {
@@ -140,11 +190,6 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setPermissionStatus('granted');
           setIsLoadingLocation(false);
           setShowPermissionModal(false);
-          try {
-            localStorage.setItem(STORAGE_KEYS.LOCATION, JSON.stringify(newLoc));
-          } catch (e) {
-            // ignore storage error
-          }
           resolve(true);
         },
         (error) => {
@@ -180,9 +225,6 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setUserLocation(loc);
       setPermissionStatus('granted');
       setShowPermissionModal(false);
-      try {
-        localStorage.setItem(STORAGE_KEYS.LOCATION, JSON.stringify(loc));
-      } catch (e) {}
     }
   }, []);
 
@@ -223,14 +265,19 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Reset entire darshan progress
   const resetProgress = useCallback(() => {
     setVisitedIds(new Set());
-    try {
-      localStorage.removeItem(STORAGE_KEYS.VISITED);
-    } catch (e) {}
+    setIsPlanningMode(true);
   }, []);
 
-  // Compute the darshan route dynamically
+  // Compute active coordinates and start name
   const activeCoordinates = userLocation || DEFAULT_COORDINATES;
+  const startDisplayName = userLocation?.presetName || (userLocation ? 'तुमचे सध्याचे स्थान' : 'शनिवार वाडा');
+  const startLegName = userLocation?.presetName
+    ? `${userLocation.presetName} येथून`
+    : userLocation
+    ? 'तुमच्या स्थानापासून'
+    : 'शनिवार वाड्यापासून';
 
+  // Compute the darshan route dynamically
   const routeStops = useMemo(() => {
     return calculateOptimalDarshanRoute({
       userLocation: {
@@ -239,8 +286,14 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
       },
       visitedIds,
       forceTraditionalOrder: isTraditionalMode,
+      startName: startLegName,
     });
-  }, [activeCoordinates, visitedIds, isTraditionalMode]);
+  }, [activeCoordinates, visitedIds, isTraditionalMode, startLegName]);
+
+  // Compute full day's route summary (Start -> all 9 Ganpatis)
+  const routeSummary = useMemo(() => {
+    return calculateRouteSummary(routeStops, startDisplayName);
+  }, [routeStops, startDisplayName]);
 
   // Current target stop (the first unvisited stop in sequence)
   const currentStop = useMemo(() => {
@@ -268,8 +321,14 @@ export const DarshanProvider: React.FC<{ children: React.ReactNode }> = ({ child
         permissionStatus,
         isOutsidePune,
         routeStops,
+        routeSummary,
         visitedIds,
         isTraditionalMode,
+        travelMode,
+        setTravelMode,
+        isPlanningMode,
+        setIsPlanningMode,
+        startDarshan,
         currentStop,
         nextStop,
         visitedCount,

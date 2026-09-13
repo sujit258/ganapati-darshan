@@ -1,5 +1,7 @@
 export type GanpatiCategory = 'manache' | 'pramukh';
 
+export type TravelMode = 'walking' | 'vehicle';
+
 export interface Coordinate {
   latitude: number;
   longitude: number;
@@ -33,6 +35,19 @@ export interface DarshanStop {
   walkingMinutes: number;
   drivingMinutes: number;
   isVisited: boolean;
+  legLabel: string; // e.g. "तुमच्या स्थानापासून" vs "मागील गणपतीपासून"
+  legDistanceFormatted: string; // e.g. "६५० मीटर" or "१.२ किमी"
+}
+
+export interface RouteSummary {
+  startName: string;
+  totalGanpatis: number;
+  totalDistanceMeters: number;
+  totalDistanceFormatted: string;
+  estimatedWalkingMinutes: number;
+  estimatedVehicleMinutes: number;
+  formattedWalkingDuration: string;
+  formattedVehicleDuration: string;
 }
 
 export interface UserLocation {

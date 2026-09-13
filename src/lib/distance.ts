@@ -1,7 +1,15 @@
 import { toMarathiNumber } from './marathiNumbers';
 
 /**
- * Calculates distance in meters between two lat/lon coordinates using Haversine formula
+ * Centralized speed configurations (estimates in central Pune Peth areas)
+ * Walking speed: approx 4.5 km/h (75 meters / minute)
+ * Vehicle speed: approx 15 km/h (250 meters / minute) - estimate for Peth street traffic
+ */
+export const WALKING_SPEED_KMH = 4.5;
+export const VEHICLE_SPEED_KMH = 15;
+
+/**
+ * Calculates straight-line distance in meters between two lat/lon coordinates using Haversine formula
  */
 export function calculateDistanceMeters(
   lat1: number,
@@ -38,34 +46,59 @@ export function formatMarathiDistance(meters: number): string {
 }
 
 /**
- * Calculates estimated walking and driving minutes in Pune central area
+ * Formats duration in minutes to natural Marathi duration:
+ * ५ → ५ मिनिटे
+ * ४५ → ४५ मिनिटे
+ * ६० → १ तास
+ * ७५ → १ तास १५ मिनिटे
+ * १२५ → २ तास ५ मिनिटे
+ * ० → ० मिनिटे
+ */
+export function formatDuration(minutes: number): string {
+  const totalMins = Math.round(Math.max(0, minutes));
+  if (totalMins === 0) {
+    return `० मिनिटे`;
+  }
+  if (totalMins < 60) {
+    return `${toMarathiNumber(totalMins)} मिनिटे`;
+  }
+  const hours = Math.floor(totalMins / 60);
+  const remainingMins = totalMins % 60;
+
+  if (remainingMins === 0) {
+    return `${toMarathiNumber(hours)} तास`;
+  }
+  return `${toMarathiNumber(hours)} तास ${toMarathiNumber(remainingMins)} मिनिटे`;
+}
+
+/**
+ * Calculates estimated walking and driving minutes based on configured speeds
  */
 export function calculateTravelTimes(meters: number): {
   walkingMinutes: number;
   drivingMinutes: number;
 } {
-  // Walking speed in crowded Peth areas ~4 km/h (approx 66 meters/min)
-  const walkingMinutes = Math.max(1, Math.round(meters / 66));
+  const walkingMetersPerMin = (WALKING_SPEED_KMH * 1000) / 60; // 75 m/min
+  const vehicleMetersPerMin = (VEHICLE_SPEED_KMH * 1000) / 60; // 250 m/min
 
-  // Driving / two-wheeler speed in Peth streets ~12 km/h (approx 200 meters/min)
-  const drivingMinutes = Math.max(2, Math.round(meters / 200));
+  const walkingMinutes = Math.max(1, Math.round(meters / walkingMetersPerMin));
+  const drivingMinutes = Math.max(1, Math.round(meters / vehicleMetersPerMin));
 
   return { walkingMinutes, drivingMinutes };
 }
 
 /**
- * Formats travel time estimates in Marathi
- * e.g. "🚶 १० मिनिटे / 🚗 ४ मिनिटे"
+ * Formats travel time estimates in Marathi for a specific leg or stop
  */
 export function formatMarathiTravelTime(
   walkingMinutes: number,
-  drivingMinutes?: number
+  drivingMinutes?: number,
+  mode: 'walking' | 'vehicle' = 'walking'
 ): string {
-  const walkStr = `🚶 ${toMarathiNumber(walkingMinutes)} मिनिटे`;
-  if (drivingMinutes && drivingMinutes > 0 && drivingMinutes < walkingMinutes) {
-    return `${walkStr}  •  🚗 ${toMarathiNumber(drivingMinutes)} मिनिटे`;
+  if (mode === 'vehicle' && drivingMinutes !== undefined) {
+    return `🚗 अंदाजे ${formatDuration(drivingMinutes)}`;
   }
-  return walkStr;
+  return `🚶 ${formatDuration(walkingMinutes)}`;
 }
 
 /**

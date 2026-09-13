@@ -16,14 +16,23 @@ interface Props {
 }
 
 export const DarshanCard: React.FC<Props> = ({ stop, isCurrentTarget = false }) => {
-  const { toggleVisited, userLocation } = useDarshan();
-  const { ganpati, sequenceNumber, distanceMeters, walkingMinutes, drivingMinutes, isVisited } = stop;
+  const { toggleVisited, userLocation, travelMode } = useDarshan();
+  const {
+    ganpati,
+    sequenceNumber,
+    walkingMinutes,
+    drivingMinutes,
+    isVisited,
+    legLabel,
+    legDistanceFormatted,
+  } = stop;
 
   const directionsUrl = getDirectionsUrl(
     ganpati.coordinates.latitude,
     ganpati.coordinates.longitude,
     userLocation?.latitude,
-    userLocation?.longitude
+    userLocation?.longitude,
+    travelMode
   );
 
   return (
@@ -107,10 +116,10 @@ export const DarshanCard: React.FC<Props> = ({ stop, isCurrentTarget = false }) 
 
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2 text-xs font-medium text-slate-600">
               <span className="text-saffron-700 font-semibold">
-                📍 {formatMarathiDistance(distanceMeters)}
+                📍 {legLabel} {legDistanceFormatted}
               </span>
               <span>•</span>
-              <span>{formatMarathiTravelTime(walkingMinutes, drivingMinutes)}</span>
+              <span>{formatMarathiTravelTime(walkingMinutes, drivingMinutes, travelMode)}</span>
             </div>
           </div>
         </div>

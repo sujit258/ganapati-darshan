@@ -1,38 +1,39 @@
-import { Ganpati, DarshanStop, Coordinate } from '@/types/ganpati';
+import { Ganpati, DarshanStop, Coordinate, RouteSummary } from '@/types/ganpati';
 import { GANPATIS } from '@/data/ganpatis';
-import { calculateDistanceMeters, calculateTravelTimes } from './distance';
+import {
+  calculateDistanceMeters,
+  calculateTravelTimes,
+  formatMarathiDistance,
+  formatDuration,
+} from './distance';
 
 export interface RouteOptimizerOptions {
   userLocation: Coordinate;
   visitedIds?: Set<string>;
   forceTraditionalOrder?: boolean;
+  startName?: string;
 }
 
 /**
  * Client-side Route Optimizer
  *
- * Algorithm:
- * - If forceTraditionalOrder is true:
- *   Follows the 5 Manache Ganpatis (1 to 5) then the 4 Major Ganpatis.
- * - Otherwise (Optimal Nearest-Neighbor / TSP heuristic):
- *   1. Starts from user's coordinates.
- *   2. Identifies all unvisited Ganpatis.
- *   3. Finds the nearest unvisited Ganpati from current point.
- *   4. Moves to that Ganpati, records step distance and times.
- *   5. Repeats until all Ganpatis are sequenced.
- *
- * This modular design allows swapping with a backend road-network or real-time traffic
- * routing API in future phases without affecting UI components.
+ * Nearest-Neighbor Greedy TSP heuristic from user coordinates
+ * Modular architecture ready to plug in road routing providers later.
  */
 export function calculateOptimalDarshanRoute(
   options: RouteOptimizerOptions
 ): DarshanStop[] {
-  const { userLocation, visitedIds = new Set(), forceTraditionalOrder = false } = options;
+  const {
+    userLocation,
+    visitedIds = new Set(),
+    forceTraditionalOrder = false,
+    startName = 'तुमच्या स्थानापासून',
+  } = options;
 
   let orderedGanpatis: Ganpati[] = [];
 
   if (forceTraditionalOrder) {
-    // Traditional order: 5 Manache Ganpatis first (rank 1 to 5), then 4 Major Ganpatis
+    // Traditional order: 5 Manache Ganpatis strictly 1 to 5, followed by 4 Major Ganpatis
     orderedGanpatis = [...GANPATIS].sort((a, b) => {
       if (a.category === 'manache' && b.category === 'manache') {
         return (a.manacheRank || 0) - (b.manacheRank || 0);
@@ -42,7 +43,7 @@ export function calculateOptimalDarshanRoute(
       return 0;
     });
   } else {
-    // Nearest-Neighbor Greedy TSP heuristic from user coordinates
+    // Nearest-Neighbor Greedy TSP heuristic from starting location
     const remaining = [...GANPATIS];
     let currentPoint: Coordinate = userLocation;
 
@@ -69,7 +70,7 @@ export function calculateOptimalDarshanRoute(
     }
   }
 
-  // Build DarshanStop objects with distances and travel times
+  // Build DarshanStop objects with leg details and cumulative statistics
   let currentLoc = userLocation;
   let cumulativeDistance = 0;
 
@@ -85,8 +86,12 @@ export function calculateOptimalDarshanRoute(
     cumulativeDistance += dist;
     const { walkingMinutes, drivingMinutes } = calculateTravelTimes(dist);
 
-    // Update currentLoc to this Ganpati for subsequent stop distance
+    // Update currentLoc to this Ganpati for the next stop's distance
     currentLoc = ganpati.coordinates;
+
+    // Requirement 7: First stop says "तुमच्या स्थानापासून" (or preset name), subsequent says "मागील गणपतीपासून"
+    const legLabel = index === 0 ? startName : 'मागील गणपतीपासून';
+    const legDistanceFormatted = formatMarathiDistance(dist);
 
     return {
       ganpati,
@@ -96,8 +101,36 @@ export function calculateOptimalDarshanRoute(
       walkingMinutes,
       drivingMinutes,
       isVisited,
+      legLabel,
+      legDistanceFormatted,
     };
   });
 
   return stops;
+}
+
+/**
+ * Calculates complete planned route summary (Start -> all stops)
+ * Independent of whether some stops have been marked visited.
+ */
+export function calculateRouteSummary(
+  stops: DarshanStop[],
+  startName: string = 'तुमचे सध्याचे स्थान'
+): RouteSummary {
+  const totalGanpatis = stops.length;
+  const totalDistanceMeters = stops.reduce((sum, stop) => sum + stop.distanceMeters, 0);
+  const totalDistanceFormatted = formatMarathiDistance(totalDistanceMeters);
+
+  const { walkingMinutes, drivingMinutes } = calculateTravelTimes(totalDistanceMeters);
+
+  return {
+    startName,
+    totalGanpatis,
+    totalDistanceMeters,
+    totalDistanceFormatted,
+    estimatedWalkingMinutes: walkingMinutes,
+    estimatedVehicleMinutes: drivingMinutes,
+    formattedWalkingDuration: formatDuration(walkingMinutes),
+    formattedVehicleDuration: formatDuration(drivingMinutes),
+  };
 }
