@@ -1,0 +1,17 @@
+{
+  "name": "पुणे गणपती दर्शन - दर्शन मार्गदर्शक",
+  "short_name": "पुणे गणपती",
+  "description": "पुण्यातील ५ मानाचे आणि ४ प्रमुख गणपतींचे दर्शन सोप्या क्रमाने घेण्यासाठी मार्गदर्शक.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF8F5",
+  "theme_color": "#EA580C",
+  "lang": "mr",
+  "icons": [
+    {
+      "src": "/images/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
